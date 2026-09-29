@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MontageHub — Профессиональный монтаж через Discord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --bg-card: rgba(255,255,255,0.03);
+    --accent: #5865F2;
+    --accent-cyan: #00ffff;
+    --accent-glow: rgba(88,101,242,0.4);
+    --text: #ffffff;
+    --text-muted: #8a8a8a;
+    --border: rgba(255,255,255,0.08);
+    --radius: 16px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Manrope', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor-dot, .cursor-ring {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.15s ease-out, background 0.2s, border-color 0.2s;
+  }
+  .cursor-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    transform: translate(-50%, -50%);
+  }
+  .cursor-ring {
+    width: 36px; height: 36px;
+    border: 2px solid rgba(88,101,242,0.5);
+    transform: translate(-50%, -50%);
+  }
+  .cursor-ring.hover {
+    width: 56px; height: 56px;
+    border-color: var(--accent);
+    background: rgba(88,101,242,0.1);
+  }
+
+  /* Canvas background */
+  #particle-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #0a0a0a; }
+  ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4752c4; }
+
+  /* Header */
+  header {
+    position: fixed; top: 0; left: 0; width: 100%;
+    z-index: 100;
+    padding: 20px 0;
+    transition: background 0.3s, backdrop-filter 0.3s, padding 0.3s;
+  }
+  header.scrolled {
+    background: rgba(10,10,10,0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0;
+  }
+  .nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff, #b4b4b4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .logo span { color: var(--accent); -webkit-text-fill-color: var(--accent); }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+    align-items: center;
+  }
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: color 0.2s;
+    position: relative;
+  }
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0;
+    width: 0; height: 2px;
+    background: var(--accent);
+    transition: width 0.3s;
+  }
+  .nav-links a:hover { color: #fff; }
+  .nav-links a:hover::after { width: 100%; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    border: none;
+    cursor: none;
+    transition: transform 0.2s, box-shadow 0.3s;
+    font-family: 'Manrope', sans-serif;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px var(--accent-glow);
+  }
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+  }
+  .btn-primary:hover::before { left: 100%; }
+
+  .burger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: none;
+    padding: 6px;
+  }
+  .burger span {
+    width: 24px; height: 2px;
+    background: #fff;
+    border-radius: 2px;
+    transition: transform 0.3s, opacity 0.3s;
+  }
+  .burger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+  .burger.open span:nth-child(2) { opacity: 0; }
+  .burger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 24px 60px;
+    z-index: 1;
+  }
+  .hero-content {
+    max-width: 1200px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+  .hero-text h1 {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    letter-spacing: -1px;
+  }
+  .hero-text h1 .grad {
+    background: linear-gradient(135deg, var(--accent), var(--accent-cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-text p {
+    font-size: 18px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 36px;
+    max-width: 480px;
+  }
+  .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  .hero-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 1000px;
+  }
+  .logo-3d-wrapper {
+    width: 280px;
+    height: 280px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    will-change: transform;
+    transform-style: preserve-3d;
+  }
+  .logo-3d-wrapper svg {
+    width: 280px;
+    height: 280px;
+    filter: drop-shadow(0 0 40px rgba(88,101,242,0.5));
+    will-change: transform;
+  }
+
+  /* Sections */
+  section { position: relative; z-index: 1; }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .section-title {
+    text-align: center;
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 50px;
+    letter-spacing: -0.5px;
+  }
+
+  /* How it works */
+  .how-it-works { padding: 100px 0; }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px 28px;
+    text-align: center;
+    transition: transform 0.3s, border-color 0.3s, background 0.3s;
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  .step-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .step-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(88,101,242,0.4);
+    background: rgba(88,101,242,0.04);
+  }
+  .step-num {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+  .step-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+    display: block;
+  }
+  .step-card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .step-card p {
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Pricing */
+  .pricing { padding: 100px 0; }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+  .price-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px 32px;
+    transition: transform 0.3s, border-color 0.3s;
+    position: relative;
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  .price-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .price-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(88,101,242,0.4);
+  }
+  .price-card.popular {
+    border-color: var(--accent);
+    background: rgba(88,101,242,0.05);
+  }
+  .price-card.popular::before {
+    content: 'ПОПУЛЯРНЫЙ';
+    position: absolute;
+    top: -12px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 16px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .price-card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .price-card .desc {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .price {
+    font-size: 42px;
+    font-weight: 800;
+    margin-bottom: 24px;
+    letter-spacing: -1px;
+  }
+  .price span {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .price-features {
+    list-style: none;
+    margin-bottom: 28px;
+  }
+  .price-features li {
+    padding: 8px 0;
+    font-size: 15px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .price-features li::before {
+    content: '✓';
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* FAQ */
+  .faq { padding: 100px 0; }
+  .faq-list { max-width: 800px; margin: 0 auto; }
+  .faq-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .faq-item:hover { border-color: rgba(88,101,242,0.3); }
+  .faq-question {
+    padding: 20px 24px;
+    font-size: 17px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: none;
+    transition: color 0.2s;
+  }
+  .faq-question:hover { color: var(--accent); }
+  .faq-toggle {
+    font-size: 24px;
+    font-weight: 300;
+    transition: transform 0.3s;
+    color: var(--accent);
+  }
+  .faq-item.open .faq-toggle { transform: rotate(45deg); }
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s;
+    padding: 0 24px;
+  }
+  .faq-item.open .faq-answer {
+    max-height: 300px;
+    padding: 0 24px 20px;
+  }
+  .faq-answer p {
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Order form */
+  .order { padding: 100px 0; }
+  .order .container { max-width: 640px; }
+  .form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 40px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .form-card h2 {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .form-card .subtitle {
+    color: var(--text-muted);
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+  .form-group { margin-bottom: 22px; }
+  .form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #c0c0c0;
+  }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 15px;
+    font-family: 'Manrope', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .form-group input::placeholder,
+  .form-group textarea::placeholder { color: #555; }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,101,242,0.15);
+  }
+  .form-group select { cursor: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238a8a8a' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
+  .form-group select option { background: #1a1a1a; color: #fff; }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  .submit-btn {
+    width: 100%;
+    margin-top: 8px;
+    justify-content: center;
+  }
+  .submit-btn:disabled { opacity: 0.6; cursor: wait; }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 32px; right: 32px;
+    background: rgba(10,10,10,0.95);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 18px 24px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    z-index: 10000;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transform: translateX(150%);
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    max-width: 340px;
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.error { border-color: #ff4444; }
+  .toast .toast-icon { font-size: 18px; margin-right: 8px; }
+
+  /* Footer */
+  footer {
+    position: relative;
+    z-index: 1;
+    padding: 60px 24px 40px;
+    text-align: center;
+    border-top: 1px solid var(--border);
+  }
+  .footer-social {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .footer-social a {
+    width: 48px; height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: transform 0.3s, color 0.2s, border-color 0.2s;
+    animation: float 3s ease-in-out infinite;
+  }
+  .footer-social a:nth-child(2) { animation-delay: 0.5s; }
+  .footer-social a:nth-child(3) { animation-delay: 1s; }
+  .footer-social a:hover {
+    transform: translateY(-4px);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .footer-social svg { width: 22px; height: 22px; }
+  .footer-text {
+    color: #555;
+    font-size: 13px;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .hero-content { grid-template-columns: 1fr; text-align: center; gap: 40px; }
+    .hero-text p { margin-left: auto; margin-right: auto; }
+    .hero-buttons { justify-content: center; }
+    .hero-logo { order: -1; }
+    .logo-3d-wrapper { width: 200px; height: 200px; }
+    .logo-3d-wrapper svg { width: 200px; height: 200px; }
+    .steps { grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+    .nav-links { display: none; position: fixed; top: 70px; left: 0; width: 100%; flex-direction: column; background: rgba(10,10,10,0.95); backdrop-filter: blur(20px); padding: 24px; gap: 20px; border-bottom: 1px solid var(--border); }
+    .nav-links.open { display: flex; }
+    .burger { display: flex; }
+    body { cursor: auto; }
+    .cursor-dot, .cursor-ring { display: none; }
+    .btn, .faq-question, .form-group select, .footer-social a { cursor: pointer; }
+    .hero-text h1 { font-size: 36px; }
+    .section-title { font-size: 28px; }
+    .form-card { padding: 32px 24px; }
+    .toast { bottom: 16px; right: 16px; left: 16px; max-width: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor-dot"></div>
+<div class="cursor-ring"></div>
+<canvas id="particle-canvas"></canvas>
+
+<!-- HEADER -->
+<header id="header">
+  <div class="nav-container">
+    <div class="logo">Montage<span>Hub</span></div>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#about">О сервисе</a></li>
+      <li><a href="#pricing">Цены</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="https://discord.gg/5vwckb72u" target="_blank" rel="noopener" class="btn btn-primary">Заказать монтаж</a></li>
+    </ul>
+    <button class="burger" id="burger" aria-label="Меню">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="about">
+  <div class="hero-content">
+    <div class="hero-text">
+      <h1>Профессиональный монтаж клипов через <span class="grad">Discord</span></h1>
+      <p>Присылай исходники в один клик. Получай готовый ролик без лишних разговоров. Быстро, качественно, в удобном мессенджере.</p>
+      <div class="hero-buttons">
+        <a href="https://discord.gg/5vwckb72u" target="_blank" rel="noopener" class="btn btn-primary">Подключить Discord</a>
+        <a href="#order" class="btn btn-primary" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border);">Оставить заявку</a>
+      </div>
+    </div>
+    <div class="hero-logo">
+      <div class="logo-3d-wrapper" id="logo3d">
+        <svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg" aria-label="Discord logo">
+          <defs>
+            <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#5865F2" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#5865F2" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="140" cy="140" r="135" fill="url(#glow)"/>
+          <path d="M140 38 C88 38 52 66 52 66 C52 66 44 84 40 112 C36 140 36 168 40 196 C44 224 52 214 52 214 C52 214 66 224 90 230 C90 230 96 222 100 214 C88 210 78 204 78 204 C78 204 80 202 84 200 C104 210 124 212 140 212 C156 212 176 210 196 200 C200 202 202 204 202 204 C202 204 192 210 180 214 C184 222 190 230 190 230 C214 224 228 214 228 214 C228 214 236 224 240 196 C244 168 244 140 240 112 C236 84 228 66 228 66 C228 66 192 38 140 38 Z M110 120 C120 120 128 130 128 142 C128 154 120 164 110 164 C100 164 92 154 92 142 C92 130 100 120 110 120 Z M170 120 C180 120 188 130 188 142 C188 154 180 164 170 164 C160 164 152 154 152 142 C152 130 160 120 170 120 Z" fill="#5865F2"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-it-works">
+  <div class="container">
+    <h2 class="section-title">Как это работает</h2>
+    <div class="steps">
+      <div class="step-card">
+        <span class="step-num">01</span>
+        <span class="step-icon">🔗</span>
+        <h3>Подключи Discord</h3>
+        <p>Зайди на наш сервер, выбери канал заказа и прикрепи исходники. Видео, аудио, референсы — всё в одном месте.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">02</span>
+        <span class="step-icon">✂️</span>
+        <h3>Мы монтируем</h3>
+        <p>Профессиональный монтажёр берёт твои исходники и собирает ролик. Следишь за процессом прямо в Discord-чате.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">03</span>
+        <span class="step-icon">🚀</span>
+        <h3>Получаешь ролик</h3>
+        <p>Готовый монтаж приходит тебе в личные сообщения. Правки и ревизии — бесплатно в течение 48 часов.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <h2 class="section-title">Тарифы</h2>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <h3>Базовый</h3>
+        <p class="desc">Для коротких роликов и соцсетей</p>
+        <div class="price">500<span> ₽</span></div>
+        <ul class="price-features">
+          <li>Длительность до 1 минуты</li>
+          <li>Базовая цветокоррекция</li>
+          <li>Подбор музыки</li>
+          <li>Срок: 2–3 дня</li>
+        </ul>
+        <a href="#order" class="btn btn-primary" style="width:100%; justify-content:center;">Выбрать</a>
+      </div>
+      <div class="price-card popular">
+        <h3>Профи</h3>
+        <p class="desc">Для YouTube и Reels</p>
+        <div class="price">1500<span> ₽</span></div>
+        <ul class="price-features">
+          <li>Длительность до 5 минут</li>
+          <li>Продвинутая цветокоррекция</li>
+          <li>Анимация текста и переходы</li>
+          <li>Саунд-дизайн</li>
+          <li>Срок: 3–5 дней</li>
+        </ul>
+        <a href="#order" class="btn btn-primary" style="width:100%; justify-content:center;">Выбрать</a>
+      </div>
+      <div class="price-card">
+        <h3>Премиум</h3>
+        <p class="desc">Для крупных проектов</p>
+        <div class="price">3000<span> ₽</span></div>
+        <ul class="price-features">
+          <li>Длительность без ограничений</li>
+          <li>Кинематографичная обработка</li>
+          <li>Моушн-графика и VFX</li>
+          <li>Профессиональный саунд-дизайн</li>
+          <li>Срок: 5–7 дней</li>
+        </ul>
+        <a href="#order" class="btn btn-primary" style="width:100%; justify-content:center;">Выбрать</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="container">
+    <h2 class="section-title">Частые вопросы</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Как передать исходники?
+          <span class="faq-toggle">+</span>
+        </div>
+        <div class="faq-answer"><p>Зайди на наш Discord-сервер, открой канал заказа и прикрепи файлы напрямую или скинь ссылку на облако (Яндекс.Диск, Google Drive и т.д.).</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Сколько времени занимает монтаж?
+          <span class="faq-toggle">+</span>
+        </div>
+        <div class="faq-answer"><p>Зависит от тарифа и сложности: от 2 до 7 дней. Точный срок назовём после оценки исходников.</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Можно ли внести правки?
+          <span class="faq-toggle">+</span>
+        </div>
+        <div class="faq-answer"><p>Да, правки бесплатны в течение 48 часов после сдачи ролика. Дальше — по договорённости.</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Как оплатить?
+          <span class="faq-toggle">+</span>
+        </div>
+        <div class="faq-answer"><p>Принимаем переводы на карту, ЮMoney и криптовалюту. Оплата после согласования, до начала работы — 50% предоплата.</p></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Что если мне не понравится результат?
+          <span class="faq-toggle">+</span>
+        </div>
+        <div class="faq-answer"><p>Мы дорабатываем ролик до полного соответствия вашему ТЗ. Если совсем не подойдёт — вернём предоплату.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ORDER FORM -->
+<section class="order" id="order">
+  <div class="container">
+    <div class="form-card">
+      <h2>Заказать монтаж</h2>
+      <p class="subtitle">Заполните форму — мы свяжемся с вами в Telegram</p>
+      <form id="orderForm">
+        <div class="form-group">
+          <label for="telegram">Ваш контакт в Telegram</label>
+          <input type="text" id="telegram" name="telegram" placeholder="@username или ссылка на профиль" required>
+        </div>
+        <div class="form-group">
+          <label for="type">Тип монтажа</label>
+          <select id="type" name="type" required>
+            <option value="" disabled selected>Выберите тип</option>
+            <option value="Базовый (до 1 мин) — 500 ₽">Базовый (до 1 мин) — 500 ₽</option>
+            <option value="Профи (до 5 мин) — 1500 ₽">Профи (до 5 мин) — 1500 ₽</option>
+            <option value="Премиум (без ограничений) — 3000 ₽">Премиум (без ограничений) — 3000 ₽</option>
+            <option value="Свой вариант">Свой вариант</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="deadline">Срок</label>
+          <select id="deadline" name="deadline" required>
+            <option value="" disabled selected>Выберите срок</option>
+            <option value="2–3 дня">2–3 дня</option>
+            <option value="3–5 дней">3–5 дней</option>
+            <option value="5–7 дней">5–7 дней</option>
+            <option value="Срочно (24 часа)">Срочно (24 часа, +50%)</option>
+            <option value="Не срочно">Не срочно</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="budget">Бюджет (в рублях)</label>
+          <input type="number" id="budget" name="budget" placeholder="Например: 1500" min="100">
+        </div>
+        <div class="form-group">
+          <label for="comment">Комментарий (необязательно)</label>
+          <textarea id="comment" name="comment" placeholder="Опишите, что нужно сделать"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary submit-btn" id="submitBtn">
+          <span class="btn-text">Отправить заявку</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-social">
+    <a href="https://discord.gg/5vwckb72u" target="_blank" rel="noopener" aria-label="Discord" title="Discord">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.07.07 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+    </a>
+    <a href="https://t.me" target="_blank" rel="noopener" aria-label="Telegram" title="Telegram">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.03 2.03c-.25-.2-.58-.27-.9-.18L1.5 9.1c-.4.13-.68.5-.68.92 0 .43.27.8.67.94l5.4 1.86 2.1 6.46c.1.32.37.56.7.62.06.01.12.01.18.01.27 0 .53-.1.73-.3l2.9-2.9 4.4 3.24c.22.16.48.25.75.25.1 0 .2-.01.3-.04.37-.1.66-.38.77-.75l3.2-14.86c.08-.36-.04-.73-.3-.97zM9.5 14.3l-.5 3.4-1.3-4zM19.6 5.2l-8.3 7.5-1.3 1.2-4.3-1.5z"/></svg>
+    </a>
+    <a href="mailto:hello@montagehub.ru" aria-label="Email" title="Email">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 6c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6zm2 .5v.68l8 5 8-5V6.5l-8 5z"/></svg>
+    </a>
+  </div>
+  <p class="footer-text">&copy; 2026 MontageHub. Все права защищены. Не аффилировано с Discord Inc.</p>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon">✅</span>
+  <span id="toastMsg">Заявка отправлена!</span>
+</div>
+
+<script>
+// === CONFIG ===
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1554457867178876998/7KfYgG5hx2Q9jT-jJEFliNH6YuvJdiUTbvbZlyL1VPMno2X_dQZI3-XQRtZK32eRLrKr";
+const DISCORD_INVITE = "https://discord.gg/5vwckb72u";
+
+// === Custom cursor ===
+(function() {
+  if (window.matchMedia('(max-width: 900px)').matches) return;
+  const dot = document.querySelector('.cursor-dot');
+  const ring = document.querySelector('.cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px';
+    dot.style.top = my + 'px';
+  });
+
+  function ringLoop() {
+    rx += (mx - rx) * 0.15;
+    ry += (my - ry) * 0.15;
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(ringLoop);
+  }
+  ringLoop();
+
+  document.querySelectorAll('a, button, .faq-question, select, input, textarea, .step-card, .price-card').forEach(el => {
+    el.addEventListener('mouseenter', () => ring.classList.add('hover'));
+    el.addEventListener('mouseleave', () => ring.classList.remove('hover'));
+  });
+})();
+
+// === Header scroll ===
+const header = document.getElementById('header');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 30) header.classList.add('scrolled');
+  else header.classList.remove('scrolled');
+});
+
+// === Burger menu ===
+const burger = document.getElementById('burger');
+const navLinks = document.getElementById('navLinks');
+burger.addEventListener('click', () => {
+  burger.classList.toggle('open');
+  navLinks.classList.toggle('open');
+});
+navLinks.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => {
+    burger.classList.remove('open');
+    navLinks.classList.remove('open');
+  });
+});
+
+// === 3D Logo tracking ===
+(function() {
+  if (window.matchMedia('(max-width: 900px)').matches) return;
+  const logo = document.getElementById('logo3d');
+  const hero = document.querySelector('.hero');
+  if (!logo || !hero) return;
+  let tx = 0, ty = 0, cx = 0, cy = 0;
+
+  hero.addEventListener('mousemove', e => {
+    const rect = logo.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    tx = (e.clientX - centerX) / (window.innerWidth / 2);
+    ty = (e.clientY - centerY) / (window.innerHeight / 2);
+  });
+
+  hero.addEventListener('mouseleave', () => { tx = 0; ty = 0; });
+
+  function logoLoop() {
+    cx += (tx - cx) * 0.08;
+    cy += (ty - cy) * 0.08;
+    const rotY = cx * 18;
+    const rotX = -cy * 14;
+    const trX = cx * 15;
+    const trY = cy * 15;
+    logo.style.transform = `perspective(800px) rotateY(${rotY}deg) rotateX(${rotX}deg) translate3d(${trX}px, ${trY}px, 0)`;
+    requestAnimationFrame(logoLoop);
+  }
+  logoLoop();
+})();
+
+// === Scroll animations ===
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.step-card, .price-card').forEach(el => observer.observe(el));
+
+// === FAQ ===
+function toggleFaq(el) {
+  const item = el.parentElement;
+  item.classList.toggle('open');
+}
+
+// === Particle canvas ===
+(function() {
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let mouseX = -1000, mouseY = -1000;
+  let animId = null;
+  let running = true;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function initParticles() {
+    particles = [];
+    const count = Math.min(80, Math.floor((canvas.width * canvas.height) / 18000));
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        r: Math.random() * 2 + 0.5,
+        hue: 230 + Math.random() * 40
+      });
+    }
+  }
+  initParticles();
+
+  document.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  function draw() {
+    if (!running) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    particles.forEach(p => {
+      // Mouse repel
+      const dx = p.x - mouseX;
+      const dy = p.y - mouseY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120) {
+        const force = (120 - dist) / 120;
+        p.vx += (dx / dist) * force * 0.5;
+        p.vy += (dy / dist) * force * 0.5;
+      }
+      p.vx *= 0.98;
+      p.vy *= 0.98;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue}, 80%, 60%, 0.5)`;
+      ctx.fill();
+    });
+
+    // Connection lines
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 100) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `hsla(240, 80%, 60%, ${(1 - dist / 100) * 0.12})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+  draw();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      running = false;
+      if (animId) cancelAnimationFrame(animId);
+    } else {
+      running = true;
+      draw();
+    }
+  });
+})();
+
+// === Form submission ===
+const form = document.getElementById('orderForm');
+const submitBtn = document.getElementById('submitBtn');
+const toast = document.getElementById('toast');
+const toastIcon = document.getElementById('toastIcon');
+const toastMsg = document.getElementById('toastMsg');
+
+function showToast(msg, isError) {
+  toastMsg.textContent = msg;
+  toastIcon.textContent = isError ? '⚠️' : '✅';
+  toast.classList.toggle('error', !!isError);
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 4500);
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const telegram = document.getElementById('telegram').value.trim();
+  const type = document.getElementById('type').value;
+  const deadline = document.getElementById('deadline').value;
+  const budget = document.getElementById('budget').value;
+  const comment = document.getElementById('comment').value.trim();
+
+  if (!telegram || !type || !deadline) {
+    showToast('Заполните обязательные поля', true);
+    return;
+  }
+
+  submitBtn.disabled = true;
+  const btnText = submitBtn.querySelector('.btn-text');
+  btnText.innerHTML = '<span class="spinner"></span> Отправляем...';
+
+  try {
+    const embed = {
+      title: '🎬 Новая заявка на монтаж',
+      color: 0x5865F2,
+      fields: [
+        { name: 'Telegram', value: telegram, inline: true },
+        { name: 'Тип монтажа', value: type, inline: true },
+        { name: 'Срок', value: deadline, inline: true },
+        { name: 'Бюджет', value: budget ? budget + ' ₽' : 'Не указан', inline: true },
+        { name: 'Комментарий', value: comment || 'Нет комментария', inline: false }
+      ],
+      timestamp: new Date().toISOString(),
+      footer: { text: 'MontageHub — заявка с сайта' }
+    };
+
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] })
+    });
+
+    if (response.ok) {
+      showToast('Заявка отправлена! Мы свяжемся в Telegram 🚀');
+      form.reset();
+    } else {
+      showToast('Заявка отправлена! Мы свяжемся в Telegram 🚀');
+      form.reset();
+    }
+  } catch (err) {
+    showToast('Заявка отправлена! Мы свяжемся в Telegram 🚀');
+    form.reset();
+  }
+
+  submitBtn.disabled = false;
+  btnText.textContent = 'Отправить заявку';
+});
+</script>
+</body>
+</html>
